@@ -351,9 +351,9 @@ const Search = () => {
               </div>
               
               <div className="p-4 bg-[--primary] bg-opacity-10 rounded-lg border-2 border-[--primary]">
-                <h3 className="font-semibold mb-2">Premium Plans</h3>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li>• Full exercise library</li>
+                <h3 className="font-semibold mb-2 text-yellow-300">Premium Plans</h3>
+                <ul className="space-y-2 text-sm text-white">
+                  <li >• Full exercised library</li>
                   <li>• Custom workout plans</li>
                   <li>• Progress tracking</li>
                   <li>• And much more!</li>
