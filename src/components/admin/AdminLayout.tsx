@@ -1,6 +1,12 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, LogOut, Dumbbell } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  LogOut,
+  Dumbbell,
+  ListTodo,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,7 +19,8 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
     { icon: Users, label: 'Users', path: '/admin/users' },
-    { icon: Dumbbell, label: 'Exercises', path: '/admin/exercises' }
+    { icon: Dumbbell, label: 'Exercises', path: '/admin/exercises' },
+    { icon: ListTodo, label: 'Programs', path: '/admin/programs' },
   ];
 
   const handleLogout = async () => {
@@ -30,7 +37,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
           <h1 className="text-2xl font-bold text-[--primary]">Admin Panel</h1>
           <p className="text-gray-600 text-sm">Camillion Fitness</p>
         </div>
-        
+
         <nav className="mt-6">
           <ul className="space-y-2">
             {navItems.map(({ icon: Icon, label, path }) => (
@@ -38,7 +45,9 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
                 <Link
                   to={path}
                   className={`flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 ${
-                    isActive(path) ? 'bg-gray-100 border-l-4 border-[--primary]' : ''
+                    isActive(path)
+                      ? 'bg-gray-100 border-l-4 border-[--primary]'
+                      : ''
                   }`}
                 >
                   <Icon size={20} className="mr-3" />
@@ -48,32 +57,30 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
             ))}
           </ul>
         </nav>
-        
+
         <div className="absolute bottom-0 w-64 border-t border-gray-200">
           <button
             onClick={handleLogout}
-            className="flex items-center w-full px-6 py-3 text-gray-700 hover:bg-gray-100"
+            className="flex items-center w-full px-6 py-3 text-gray-700 hover:bg-gray-100 "
           >
             <LogOut size={20} className="mr-3" />
             <span>Logout</span>
           </button>
         </div>
       </div>
-      
+
       {/* Main Content */}
       {/* <div className="flex-1 overflow-x-hidden">*/}
       <div className="flex-1 ml-64">
         <header className="bg-white shadow-sm">
           <div className="px-6 py-4">
             <h2 className="text-xl font-semibold text-gray-800">
-              {navItems.find(item => isActive(item.path))?.label || 'Admin'}
+              {navItems.find((item) => isActive(item.path))?.label || 'Admin'}
             </h2>
           </div>
         </header>
-        
-        <main className="p-6">
-          {children}
-        </main>
+
+        <main className="p-6">{children}</main>
       </div>
     </div>
   );
