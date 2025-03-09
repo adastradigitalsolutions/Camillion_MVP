@@ -644,6 +644,35 @@ const AdminUsers = () => {
     );
   };
 
+  const groupPhotosByPose = (photos: any[]) => {
+    const photosByPose: {[key: string]: any} = {};
+    
+    // First, group all photos by pose
+    photos.forEach(photo => {
+      if (!photosByPose[photo.pose]) {
+        photosByPose[photo.pose] = [];
+      }
+      photosByPose[photo.pose].push(photo);
+    });
+    
+    // For each pose, sort photos by date and get first, previous, and current
+    const result: {[key: string]: {first: any, previous: any, current: any}} = {};
+    
+    Object.keys(photosByPose).forEach(pose => {
+      const posePhotos = photosByPose[pose].sort((a: any, b: any) => 
+        new Date(a.check_date).getTime() - new Date(b.check_date).getTime()
+      );
+      
+      result[pose] = {
+        first: posePhotos[0] || null,
+        previous: posePhotos[posePhotos.length - 2] || null,
+        current: posePhotos[posePhotos.length - 1] || null
+      };
+    });
+    
+    return result;
+  };
+
   // Filter and sort users
   const filteredAndSortedUsers = users
     .filter(user => {
@@ -776,27 +805,49 @@ const AdminUsers = () => {
               </div>
 
               <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold mb-2">Lifestyle</h4>
+                <h4 className="font-semibold mb-2">Lifestyle & Training</h4>
                 <ul className="space-y-2 text-gray-600">
                   <li>Job Type: {userDetails.job_type || 'Not specified'}</li>
                   <li>Lifestyle: {userDetails.lifestyle || 'Not specified'}</li>
                   <li>Training Experience: {userDetails.training_experience_months || 0} months</li>
+                  <li>Training Type: {userDetails.training_type || 'Not specified'}</li>
                   <li>Preferred Training Days: {userDetails.preferred_training_days || 'Not specified'}</li>
                 </ul>
               </div>
 
               <div className="p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-semibold mb-2">Goals</h4>
-                <div className="flex flex-wrap gap-2 text-white">
+                <div className="flex flex-wrap gap-2">
                   {userDetails.goals?.map((goal: string, index: number) => (
                     <span
                       key={index}
-                      className="px-2 py-1 bg-[--primary] bg-opacity-10 text-[--primary] rounded-full text-sm text-white"
+                      className="px-2 py-1 bg-[--primary] bg-opacity-10 text-[--primary] rounded-full text-sm"
                     >
                       {goal}
                     </span>
                   ))}
                 </div>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-semibold mb-2">Health Information</h4>
+                <ul className="space-y-2 text-gray-600">
+                  <li>Medical Conditions: {userDetails.medical_conditions || 'None reported'}</li>
+                  <li>Medications: {userDetails.medications || 'None reported'}</li>
+                  <li>Joint Pain: {userDetails.joint_pain || 'None reported'}</li>
+                  <li>Past Surgeries: {userDetails.past_surgeries || 'None reported'}</li>
+                </ul>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <h4 className="font-semibold mb-2">Nutrition & Lifestyle</h4>
+                <ul className="space-y-2 text-gray-600">
+                  <li>Diet Description: {userDetails.diet_description || 'Not specified'}</li>
+                  <li>Supplements: {userDetails.supplements || 'None reported'}</li>
+                  <li>Food Intolerances: {userDetails.food_intolerances || 'None reported'}</li>
+                  <li>Alcohol Consumption: {userDetails.alcohol_consumption || 'Not specified'}</li>
+                  <li>Menstrual Cycle: {userDetails.menstrual_cycle || 'Not applicable'}</li>
+                </ul>
               </div>
             </div>
           )}
@@ -836,19 +887,84 @@ const AdminUsers = () => {
         <div className="card">
           <h2 className="text-xl font-bold mb-4">Progress Photos</h2>
           {progressPhotos.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {progressPhotos.map((photo) => (
-                <div key={photo.id} className="space-y-2">
-                  <div className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
-                    <img
-                      src={photo.photo_url}
-                      alt={`Progress - ${new Date(photo.check_date).toLocaleDateString()}`}
-                      className="w-full h-full object-cover"
-                    />
+            <div className="space-y-6">
+              {Object.entries(groupPhotosByPose(progressPhotos)).map(([pose, photos]) => (
+                <div key={pose} className="border rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => {
+                      const element = document.getElementById(`photos-${pose}`);
+                      if (element) {
+                        element.classList.toggle('hidden');
+                      }
+                    }}
+                    className="w-full p-4 flex justify-between items-center bg-gray-50 hover:bg-gray-100"
+                  >
+                    <h3 className="font-semibold">{getPoseDisplayName(pose)}</h3>
+                    <ChevronDown size={20} className="text-gray-600" />
+                  </button>
+                  
+                  <div id={`photos-${pose}`} className="hidden">
+                    <div className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* First Check */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-sm text-gray-600">First Check</h4>
+                          <div className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
+                            {photos.first && (
+                              <img
+                                src={photos.first.photo_url}
+                                alt={`${pose} first check`}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                          {photos.first && (
+                            <p className="text-sm text-center text-gray-600">
+                              {new Date(photos.first.check_date).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Previous Check */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-sm text-gray-600">Previous Check</h4>
+                          <div className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
+                            {photos.previous && photos.previous.id !== photos.first?.id && (
+                              <img
+                                src={photos.previous.photo_url}
+                                alt={`${pose} previous check`}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                          {photos.previous && photos.previous.id !== photos.first?.id && (
+                            <p className="text-sm text-center text-gray-600">
+                              {new Date(photos.previous.check_date).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Current Check */}
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-sm text-gray-600">Current</h4>
+                          <div className="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
+                            {photos.current && photos.current.id !== photos.previous?.id && photos.current.id !== photos.first?.id && (
+                              <img
+                                src={photos.current.photo_url}
+                                alt={`${pose} current`}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                          {photos.current && photos.current.id !== photos.previous?.id && photos.current.id !== photos.first?.id && (
+                            <p className="text-sm text-center text-gray-600">
+                              {new Date(photos.current.check_date).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-center text-gray-600">
-                    {new Date(photo.check_date).toLocaleDateString()}
-                  </p>
                 </div>
               ))}
             </div>
