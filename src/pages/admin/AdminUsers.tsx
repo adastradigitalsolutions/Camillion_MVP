@@ -20,6 +20,7 @@ import {
   Target,
   Info,
   DumbbellIcon,
+  Trash2,
 } from 'lucide-react';
 import {
   LineChart,
@@ -65,9 +66,11 @@ const AdminUsers = () => {
   const [editedProgram, setEditedProgram] =
     useState<TrainingProgramWithDetails | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+  const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
 
   useEffect(() => {
     fetchUsers();
+    fetchExercises();
   }, []);
 
   const fetchUsers = async () => {
@@ -120,6 +123,20 @@ const AdminUsers = () => {
       setError(err.message || 'Failed to load users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchExercises = async () => {
+    try {
+      const { data: exercisesData, error: exercisesError } = await supabase
+        .from('exercises')
+        .select('*')
+        .order('title');
+
+      if (exercisesError) throw exercisesError;
+      setAvailableExercises(exercisesData || []);
+    } catch (err) {
+      console.error('Error fetching exercises:', err);
     }
   };
 
@@ -420,198 +437,192 @@ const AdminUsers = () => {
                     </div>
                   </div>
 
+                  {/* Exercise List */}
                   <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-lg font-medium">Exercises</h4>
+                      <button
+                        onClick={() => {
+                          const newSessions = [
+                            ...(editedProgram.sessions || []),
+                          ];
+                          const newExercises = [
+                            ...(newSessions[sessionIndex].training_exercises ||
+                              []),
+                            {
+                              id: `new-${Date.now()}`,
+                              exercise_id: '',
+                              exercise_parameters: [],
+                            },
+                          ];
+                          newSessions[sessionIndex] = {
+                            ...newSessions[sessionIndex],
+                            training_exercises: newExercises,
+                          };
+                          setEditedProgram({
+                            ...editedProgram,
+                            sessions: newSessions,
+                          });
+                        }}
+                        className="px-3 py-1 text-sm bg-[var(--primary)] text-white rounded-md hover:scale-105 transition-transform duration-200"
+                      >
+                        Add Exercise
+                      </button>
+                    </div>
+
                     {session.training_exercises?.map(
                       (exercise, exerciseIndex) => (
-                        <div
-                          key={exercise.id}
-                          className="bg-gray-50 rounded-lg p-4"
-                        >
-                          <div className="flex items-start gap-4">
-                            <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                              <img
-                                src={exercise.exercise?.image_url}
-                                alt={exercise.exercise?.title}
-                                className="w-full h-full object-cover"
-                              />
+                        <div key={exercise.id} className="border rounded p-4">
+                          <div className="flex justify-between items-center mb-4">
+                            <div className="w-full">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Exercise
+                              </label>
+                              <select
+                                value={exercise.exercise_id}
+                                onChange={(e) => {
+                                  const newSessions = [
+                                    ...(editedProgram.sessions || []),
+                                  ];
+                                  const newExercises = [
+                                    ...(newSessions[sessionIndex]
+                                      .training_exercises || []),
+                                  ];
+                                  newExercises[exerciseIndex] = {
+                                    ...exercise,
+                                    exercise_id: e.target.value,
+                                  };
+                                  newSessions[sessionIndex] = {
+                                    ...newSessions[sessionIndex],
+                                    training_exercises: newExercises,
+                                  };
+                                  setEditedProgram({
+                                    ...editedProgram,
+                                    sessions: newSessions,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[--primary] focus:border-[--primary]"
+                              >
+                                <option value="">Select Exercise</option>
+                                {availableExercises.map((ex) => (
+                                  <option key={ex.id} value={ex.id}>
+                                    {ex.title}
+                                  </option>
+                                ))}
+                              </select>
                             </div>
-                            <div className="flex-1">
-                              <h5 className="font-medium mb-2">
-                                {exercise.exercise?.title}
-                              </h5>
+                            <button
+                              onClick={() => {
+                                const newSessions = [
+                                  ...(editedProgram.sessions || []),
+                                ];
+                                const newExercises = newSessions[
+                                  sessionIndex
+                                ].training_exercises?.filter(
+                                  (_, idx) => idx !== exerciseIndex
+                                );
+                                newSessions[sessionIndex] = {
+                                  ...newSessions[sessionIndex],
+                                  training_exercises: newExercises,
+                                };
+                                setEditedProgram({
+                                  ...editedProgram,
+                                  sessions: newSessions,
+                                });
+                              }}
+                              className="ml-4 p-2 text-red-500 hover:bg-red-50 rounded-full"
+                            >
+                              <Trash2 size={20} />
+                            </button>
+                          </div>
 
-                              {exercise.exercise_parameters?.map(
-                                (param, paramIndex) => (
-                                  <div
-                                    key={param.id}
-                                    className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm"
-                                  >
-                                    <div>
-                                      <label className="block text-xs text-gray-600 mb-1">
-                                        Sets
-                                      </label>
-                                      <input
-                                        type="number"
-                                        value={param.sets}
-                                        onChange={(e) => {
-                                          const newSessions = [
-                                            ...(editedProgram.sessions || []),
-                                          ];
-                                          const newExercises = [
-                                            ...(newSessions[sessionIndex]
-                                              .training_exercises || []),
-                                          ];
-                                          const newParams = [
-                                            ...(newExercises[exerciseIndex]
-                                              .exercise_parameters || []),
-                                          ];
-                                          newParams[paramIndex] = {
-                                            ...param,
-                                            sets: parseInt(e.target.value),
-                                          };
-                                          newExercises[exerciseIndex] = {
-                                            ...newExercises[exerciseIndex],
-                                            exercise_parameters: newParams,
-                                          };
-                                          newSessions[sessionIndex] = {
-                                            ...newSessions[sessionIndex],
-                                            training_exercises: newExercises,
-                                          };
-                                          setEditedProgram({
-                                            ...editedProgram,
-                                            sessions: newSessions,
-                                          });
-                                        }}
-                                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[--primary] focus:border-[--primary]"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs text-gray-600 mb-1">
-                                        Reps
-                                      </label>
-                                      <input
-                                        type="number"
-                                        value={param.reps}
-                                        onChange={(e) => {
-                                          const newSessions = [
-                                            ...(editedProgram.sessions || []),
-                                          ];
-                                          const newExercises = [
-                                            ...(newSessions[sessionIndex]
-                                              .training_exercises || []),
-                                          ];
-                                          const newParams = [
-                                            ...(newExercises[exerciseIndex]
-                                              .exercise_parameters || []),
-                                          ];
-                                          newParams[paramIndex] = {
-                                            ...param,
-                                            reps: parseInt(e.target.value),
-                                          };
-                                          newExercises[exerciseIndex] = {
-                                            ...newExercises[exerciseIndex],
-                                            exercise_parameters: newParams,
-                                          };
-                                          newSessions[sessionIndex] = {
-                                            ...newSessions[sessionIndex],
-                                            training_exercises: newExercises,
-                                          };
-                                          setEditedProgram({
-                                            ...editedProgram,
-                                            sessions: newSessions,
-                                          });
-                                        }}
-                                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[--primary] focus:border-[--primary]"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs text-gray-600 mb-1">
-                                        Rest (s)
-                                      </label>
-                                      <input
-                                        type="number"
-                                        value={param.rest_seconds}
-                                        onChange={(e) => {
-                                          const newSessions = [
-                                            ...(editedProgram.sessions || []),
-                                          ];
-                                          const newExercises = [
-                                            ...(newSessions[sessionIndex]
-                                              .training_exercises || []),
-                                          ];
-                                          const newParams = [
-                                            ...(newExercises[exerciseIndex]
-                                              .exercise_parameters || []),
-                                          ];
-                                          newParams[paramIndex] = {
-                                            ...param,
-                                            rest_seconds: parseInt(
-                                              e.target.value
-                                            ),
-                                          };
-                                          newExercises[exerciseIndex] = {
-                                            ...newExercises[exerciseIndex],
-                                            exercise_parameters: newParams,
-                                          };
-                                          newSessions[sessionIndex] = {
-                                            ...newSessions[sessionIndex],
-                                            training_exercises: newExercises,
-                                          };
-                                          setEditedProgram({
-                                            ...editedProgram,
-                                            sessions: newSessions,
-                                          });
-                                        }}
-                                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[--primary] focus:border-[--primary]"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-xs text-gray-600 mb-1">
-                                        Tempo
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={param.tempo}
-                                        onChange={(e) => {
-                                          const newSessions = [
-                                            ...(editedProgram.sessions || []),
-                                          ];
-                                          const newExercises = [
-                                            ...(newSessions[sessionIndex]
-                                              .training_exercises || []),
-                                          ];
-                                          const newParams = [
-                                            ...(newExercises[exerciseIndex]
-                                              .exercise_parameters || []),
-                                          ];
-                                          newParams[paramIndex] = {
-                                            ...param,
-                                            tempo: e.target.value,
-                                          };
-                                          newExercises[exerciseIndex] = {
-                                            ...newExercises[exerciseIndex],
-                                            exercise_parameters: newParams,
-                                          };
-                                          newSessions[sessionIndex] = {
-                                            ...newSessions[sessionIndex],
-                                            training_exercises: newExercises,
-                                          };
-                                          setEditedProgram({
-                                            ...editedProgram,
-                                            sessions: newSessions,
-                                          });
-                                        }}
-                                        className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[--primary] focus:border-[--primary]"
-                                      />
-                                    </div>
-                                    {param.notes && (
-                                      <div className="col-span-2 md:col-span-4">
-                                        <label className="block text-xs text-gray-600 mb-1">
-                                          Notes
+                          {/* Parameters */}
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                              <h5 className="text-sm font-medium text-gray-700">
+                                Parameters
+                              </h5>
+                              <button
+                                onClick={() => {
+                                  const newSessions = [
+                                    ...(editedProgram.sessions || []),
+                                  ];
+                                  const newExercises = [
+                                    ...(newSessions[sessionIndex]
+                                      .training_exercises || []),
+                                  ];
+                                  const newParams = [
+                                    ...(exercise.exercise_parameters || []),
+                                    {
+                                      id: `new-${Date.now()}`,
+                                      sets: 3,
+                                      reps: 10,
+                                      rest_seconds: 60,
+                                      tempo: '2-0-2-0',
+                                      notes: '',
+                                    },
+                                  ];
+                                  newExercises[exerciseIndex] = {
+                                    ...exercise,
+                                    exercise_parameters: newParams,
+                                  };
+                                  newSessions[sessionIndex] = {
+                                    ...newSessions[sessionIndex],
+                                    training_exercises: newExercises,
+                                  };
+                                  setEditedProgram({
+                                    ...editedProgram,
+                                    sessions: newSessions,
+                                  });
+                                }}
+                                className="px-2 py-1 text-xs bg-[var(--primary)] text-white rounded-md hover:scale-105 transition-transform duration-200"
+                              >
+                                Add Parameter Set
+                              </button>
+                            </div>
+
+                            {exercise.exercise_parameters?.map(
+                              (param, paramIndex) => (
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                  <div className="relative border rounded-lg p-6 col-span-full bg-white shadow-sm">
+                                    <button
+                                      onClick={() => {
+                                        const newSessions = [
+                                          ...(editedProgram.sessions || []),
+                                        ];
+                                        const newExercises = [
+                                          ...(newSessions[sessionIndex]
+                                            .training_exercises || []),
+                                        ];
+                                        const newParams =
+                                          exercise.exercise_parameters?.filter(
+                                            (_, idx) => idx !== paramIndex
+                                          );
+                                        newExercises[exerciseIndex] = {
+                                          ...exercise,
+                                          exercise_parameters: newParams,
+                                        };
+                                        newSessions[sessionIndex] = {
+                                          ...newSessions[sessionIndex],
+                                          training_exercises: newExercises,
+                                        };
+                                        setEditedProgram({
+                                          ...editedProgram,
+                                          sessions: newSessions,
+                                        });
+                                      }}
+                                      className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-50 rounded-full"
+                                    >
+                                      <X size={20} />
+                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Week Number
                                         </label>
                                         <input
-                                          type="text"
-                                          value={param.notes}
+                                          type="number"
+                                          value={param.week_number}
                                           onChange={(e) => {
                                             const newSessions = [
                                               ...(editedProgram.sessions || []),
@@ -620,16 +631,20 @@ const AdminUsers = () => {
                                               ...(newSessions[sessionIndex]
                                                 .training_exercises || []),
                                             ];
-                                            const newParams = [
-                                              ...(newExercises[exerciseIndex]
-                                                .exercise_parameters || []),
-                                            ];
-                                            newParams[paramIndex] = {
-                                              ...param,
-                                              notes: e.target.value,
-                                            };
+                                            const newParams =
+                                              exercise.exercise_parameters?.map(
+                                                (p) =>
+                                                  p.id === param.id
+                                                    ? {
+                                                        ...p,
+                                                        week_number: parseInt(
+                                                          e.target.value
+                                                        ),
+                                                      }
+                                                    : p
+                                              );
                                             newExercises[exerciseIndex] = {
-                                              ...newExercises[exerciseIndex],
+                                              ...exercise,
                                               exercise_parameters: newParams,
                                             };
                                             newSessions[sessionIndex] = {
@@ -641,14 +656,269 @@ const AdminUsers = () => {
                                               sessions: newSessions,
                                             });
                                           }}
-                                          className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[--primary] focus:border-[--primary]"
+                                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[--primary] focus:border-transparent"
                                         />
                                       </div>
-                                    )}
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Weight (kg)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          step="0.5"
+                                          value={param.weight}
+                                          onChange={(e) => {
+                                            const newSessions = [
+                                              ...(editedProgram.sessions || []),
+                                            ];
+                                            const newExercises = [
+                                              ...(newSessions[sessionIndex]
+                                                .training_exercises || []),
+                                            ];
+                                            const newParams =
+                                              exercise.exercise_parameters?.map(
+                                                (p) =>
+                                                  p.id === param.id
+                                                    ? {
+                                                        ...p,
+                                                        weight: parseFloat(
+                                                          e.target.value
+                                                        ),
+                                                      }
+                                                    : p
+                                              );
+                                            newExercises[exerciseIndex] = {
+                                              ...exercise,
+                                              exercise_parameters: newParams,
+                                            };
+                                            newSessions[sessionIndex] = {
+                                              ...newSessions[sessionIndex],
+                                              training_exercises: newExercises,
+                                            };
+                                            setEditedProgram({
+                                              ...editedProgram,
+                                              sessions: newSessions,
+                                            });
+                                          }}
+                                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[--primary] focus:border-transparent"
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Sets
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={param.sets}
+                                          onChange={(e) => {
+                                            const newSessions = [
+                                              ...(editedProgram.sessions || []),
+                                            ];
+                                            const newExercises = [
+                                              ...(newSessions[sessionIndex]
+                                                .training_exercises || []),
+                                            ];
+                                            const newParams =
+                                              exercise.exercise_parameters?.map(
+                                                (p) =>
+                                                  p.id === param.id
+                                                    ? {
+                                                        ...p,
+                                                        sets: parseInt(
+                                                          e.target.value
+                                                        ),
+                                                      }
+                                                    : p
+                                              );
+                                            newExercises[exerciseIndex] = {
+                                              ...exercise,
+                                              exercise_parameters: newParams,
+                                            };
+                                            newSessions[sessionIndex] = {
+                                              ...newSessions[sessionIndex],
+                                              training_exercises: newExercises,
+                                            };
+                                            setEditedProgram({
+                                              ...editedProgram,
+                                              sessions: newSessions,
+                                            });
+                                          }}
+                                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[--primary] focus:border-transparent"
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Reps
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={param.reps}
+                                          onChange={(e) => {
+                                            const newSessions = [
+                                              ...(editedProgram.sessions || []),
+                                            ];
+                                            const newExercises = [
+                                              ...(newSessions[sessionIndex]
+                                                .training_exercises || []),
+                                            ];
+                                            const newParams =
+                                              exercise.exercise_parameters?.map(
+                                                (p) =>
+                                                  p.id === param.id
+                                                    ? {
+                                                        ...p,
+                                                        reps: parseInt(
+                                                          e.target.value
+                                                        ),
+                                                      }
+                                                    : p
+                                              );
+                                            newExercises[exerciseIndex] = {
+                                              ...exercise,
+                                              exercise_parameters: newParams,
+                                            };
+                                            newSessions[sessionIndex] = {
+                                              ...newSessions[sessionIndex],
+                                              training_exercises: newExercises,
+                                            };
+                                            setEditedProgram({
+                                              ...editedProgram,
+                                              sessions: newSessions,
+                                            });
+                                          }}
+                                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[--primary] focus:border-transparent"
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Rest (s)
+                                        </label>
+                                        <input
+                                          type="number"
+                                          value={param.rest_seconds}
+                                          onChange={(e) => {
+                                            const newSessions = [
+                                              ...(editedProgram.sessions || []),
+                                            ];
+                                            const newExercises = [
+                                              ...(newSessions[sessionIndex]
+                                                .training_exercises || []),
+                                            ];
+                                            const newParams =
+                                              exercise.exercise_parameters?.map(
+                                                (p) =>
+                                                  p.id === param.id
+                                                    ? {
+                                                        ...p,
+                                                        rest_seconds: parseInt(
+                                                          e.target.value
+                                                        ),
+                                                      }
+                                                    : p
+                                              );
+                                            newExercises[exerciseIndex] = {
+                                              ...exercise,
+                                              exercise_parameters: newParams,
+                                            };
+                                            newSessions[sessionIndex] = {
+                                              ...newSessions[sessionIndex],
+                                              training_exercises: newExercises,
+                                            };
+                                            setEditedProgram({
+                                              ...editedProgram,
+                                              sessions: newSessions,
+                                            });
+                                          }}
+                                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[--primary] focus:border-transparent"
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Tempo
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={param.tempo}
+                                          onChange={(e) => {
+                                            const newSessions = [
+                                              ...(editedProgram.sessions || []),
+                                            ];
+                                            const newExercises = [
+                                              ...(newSessions[sessionIndex]
+                                                .training_exercises || []),
+                                            ];
+                                            const newParams =
+                                              exercise.exercise_parameters?.map(
+                                                (p) =>
+                                                  p.id === param.id
+                                                    ? {
+                                                        ...p,
+                                                        tempo: e.target.value,
+                                                      }
+                                                    : p
+                                              );
+                                            newExercises[exerciseIndex] = {
+                                              ...exercise,
+                                              exercise_parameters: newParams,
+                                            };
+                                            newSessions[sessionIndex] = {
+                                              ...newSessions[sessionIndex],
+                                              training_exercises: newExercises,
+                                            };
+                                            setEditedProgram({
+                                              ...editedProgram,
+                                              sessions: newSessions,
+                                            });
+                                          }}
+                                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[--primary] focus:border-transparent"
+                                        />
+                                      </div>
+                                      <div className="col-span-full space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Notes
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={param.notes || ''}
+                                          onChange={(e) => {
+                                            const newSessions = [
+                                              ...(editedProgram.sessions || []),
+                                            ];
+                                            const newExercises = [
+                                              ...(newSessions[sessionIndex]
+                                                .training_exercises || []),
+                                            ];
+                                            const newParams =
+                                              exercise.exercise_parameters?.map(
+                                                (p) =>
+                                                  p.id === param.id
+                                                    ? {
+                                                        ...p,
+                                                        notes: e.target.value,
+                                                      }
+                                                    : p
+                                              );
+                                            newExercises[exerciseIndex] = {
+                                              ...exercise,
+                                              exercise_parameters: newParams,
+                                            };
+                                            newSessions[sessionIndex] = {
+                                              ...newSessions[sessionIndex],
+                                              training_exercises: newExercises,
+                                            };
+                                            setEditedProgram({
+                                              ...editedProgram,
+                                              sessions: newSessions,
+                                            });
+                                          }}
+                                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[--primary] focus:border-transparent"
+                                        />
+                                      </div>
+                                    </div>
                                   </div>
-                                )
-                              )}
-                            </div>
+                                </div>
+                              )
+                            )}
                           </div>
                         </div>
                       )
@@ -696,44 +966,160 @@ const AdminUsers = () => {
 
                     if (programError) throw programError;
 
-                    // Update sessions
+                    // Update or create sessions
                     for (const session of editedProgram.sessions || []) {
-                      const { error: sessionError } = await supabase
-                        .from('training_sessions')
-                        .update({
-                          name: session.name,
-                          day_of_week: session.day_of_week,
-                        })
-                        .eq('id', session.id);
-
-                      if (sessionError) throw sessionError;
-
-                      // Update training exercises
-                      for (const exercise of session.training_exercises || []) {
-                        const { error: exerciseError } = await supabase
-                          .from('training_exercises')
-                          .update({
-                            exercise_id: exercise.exercise_id,
-                          })
-                          .eq('id', exercise.id);
-
-                        if (exerciseError) throw exerciseError;
-
-                        // Update exercise parameters
-                        for (const param of exercise.exercise_parameters ||
-                          []) {
-                          const { error: paramError } = await supabase
-                            .from('exercise_parameters')
-                            .update({
-                              sets: param.sets,
-                              reps: param.reps,
-                              rest_seconds: param.rest_seconds,
-                              tempo: param.tempo,
-                              notes: param.notes,
+                      if (session.id.startsWith('new-')) {
+                        // Create new session
+                        const { data: newSession, error: sessionError } =
+                          await supabase
+                            .from('training_sessions')
+                            .insert({
+                              program_id: editedProgram.id,
+                              name: session.name,
+                              day_of_week: session.day_of_week,
+                              order_index: 0, // You might want to calculate this based on existing sessions
                             })
-                            .eq('id', param.id);
+                            .select()
+                            .single();
 
-                          if (paramError) throw paramError;
+                        if (sessionError) throw sessionError;
+
+                        // Update exercises for this new session
+                        for (const exercise of session.training_exercises ||
+                          []) {
+                          if (!exercise.exercise_id) continue; // Skip if no exercise is selected
+
+                          const { data: newExercise, error: exerciseError } =
+                            await supabase
+                              .from('training_exercises')
+                              .insert({
+                                session_id: newSession.id,
+                                exercise_id: exercise.exercise_id,
+                                order_index: 0, // You might want to calculate this
+                              })
+                              .select()
+                              .single();
+
+                          if (exerciseError) throw exerciseError;
+
+                          // Create parameters for this new exercise
+                          for (const param of exercise.exercise_parameters ||
+                            []) {
+                            const { error: paramError } = await supabase
+                              .from('exercise_parameters')
+                              .insert({
+                                training_exercise_id: newExercise.id,
+                                week_number: param.week_number || 1,
+                                sets: param.sets || 3,
+                                reps: param.reps || '10',
+                                rest_seconds: param.rest_seconds || 60,
+                                tempo: param.tempo || '2-0-2-0',
+                                weight: param.weight || null,
+                                notes: param.notes || '',
+                              });
+
+                            if (paramError) throw paramError;
+                          }
+                        }
+                      } else {
+                        // Update existing session
+                        const { error: sessionError } = await supabase
+                          .from('training_sessions')
+                          .update({
+                            name: session.name,
+                            day_of_week: session.day_of_week,
+                          })
+                          .eq('id', session.id);
+
+                        if (sessionError) throw sessionError;
+
+                        // Update or create exercises
+                        for (const exercise of session.training_exercises ||
+                          []) {
+                          if (exercise.id.startsWith('new-')) {
+                            if (!exercise.exercise_id) continue; // Skip if no exercise is selected
+
+                            // Create new exercise
+                            const { data: newExercise, error: exerciseError } =
+                              await supabase
+                                .from('training_exercises')
+                                .insert({
+                                  session_id: session.id,
+                                  exercise_id: exercise.exercise_id,
+                                  order_index: 0, // You might want to calculate this
+                                })
+                                .select()
+                                .single();
+
+                            if (exerciseError) throw exerciseError;
+
+                            // Create parameters for this new exercise
+                            for (const param of exercise.exercise_parameters ||
+                              []) {
+                              const { error: paramError } = await supabase
+                                .from('exercise_parameters')
+                                .insert({
+                                  training_exercise_id: newExercise.id,
+                                  week_number: param.week_number || 1,
+                                  sets: param.sets || 3,
+                                  reps: param.reps || '10',
+                                  rest_seconds: param.rest_seconds || 60,
+                                  tempo: param.tempo || '2-0-2-0',
+                                  weight: param.weight || null,
+                                  notes: param.notes || '',
+                                });
+
+                              if (paramError) throw paramError;
+                            }
+                          } else {
+                            // Update existing exercise
+                            const { error: exerciseError } = await supabase
+                              .from('training_exercises')
+                              .update({
+                                exercise_id: exercise.exercise_id,
+                              })
+                              .eq('id', exercise.id);
+
+                            if (exerciseError) throw exerciseError;
+
+                            // Update or create parameters
+                            for (const param of exercise.exercise_parameters ||
+                              []) {
+                              if (param.id.startsWith('new-')) {
+                                // Create new parameter
+                                const { error: paramError } = await supabase
+                                  .from('exercise_parameters')
+                                  .insert({
+                                    training_exercise_id: exercise.id,
+                                    week_number: param.week_number || 1,
+                                    sets: param.sets || 3,
+                                    reps: param.reps || '10',
+                                    rest_seconds: param.rest_seconds || 60,
+                                    tempo: param.tempo || '2-0-2-0',
+                                    weight: param.weight || null,
+                                    notes: param.notes || '',
+                                  });
+
+                                if (paramError) throw paramError;
+                              } else {
+                                // Update existing parameter
+                                const { error: paramError } = await supabase
+                                  .from('exercise_parameters')
+                                  .update({
+                                    week_number: param.week_number,
+                                    sets: param.sets,
+                                    reps: param.reps,
+                                    rest_seconds: param.rest_seconds,
+                                    tempo: param.tempo,
+                                    weight: param.weight,
+                                    notes: param.notes,
+                                  })
+                                  .eq('id', param.id);
+
+                                if (paramError) throw paramError;
+                              }
+                            }
+                          }
                         }
                       }
                     }
@@ -752,6 +1138,32 @@ const AdminUsers = () => {
                 className="px-4 py-2 bg-[--primary] text-white rounded-md hover:bg-[--primary-dark] transition-colors disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+
+            {/* Add Session Button */}
+            <div className="flex justify-center mt-6">
+              <button
+                onClick={() => {
+                  const newSessions = [
+                    ...(editedProgram.sessions || []),
+                    {
+                      id: `new-${Date.now()}`,
+                      name: `Session ${
+                        (editedProgram.sessions?.length || 0) + 1
+                      }`,
+                      day_of_week: 0,
+                      training_exercises: [],
+                    },
+                  ];
+                  setEditedProgram({
+                    ...editedProgram,
+                    sessions: newSessions,
+                  });
+                }}
+                className="px-4 py-2 bg-[var(--primary)] text-white rounded-md hover:scale-105 transition-transform duration-200"
+              >
+                Add New Session
               </button>
             </div>
           </div>
@@ -805,39 +1217,61 @@ const AdminUsers = () => {
                               {exercise.exercise_parameters?.map((param) => (
                                 <div
                                   key={param.id}
-                                  className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm"
+                                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg mb-4"
                                 >
-                                  <div>
-                                    <span className="text-gray-600">Sets:</span>{' '}
-                                    <span className="font-medium">
+                                  <div className="p-2">
+                                    <span className="text-gray-600 block mb-1">
+                                      Week:
+                                    </span>
+                                    <span className="font-medium text-lg">
+                                      {param.week_number}
+                                    </span>
+                                  </div>
+                                  <div className="p-2">
+                                    <span className="text-gray-600 block mb-1">
+                                      Weight:
+                                    </span>
+                                    <span className="font-medium text-lg">
+                                      {param.weight}kg
+                                    </span>
+                                  </div>
+                                  <div className="p-2">
+                                    <span className="text-gray-600 block mb-1">
+                                      Sets:
+                                    </span>
+                                    <span className="font-medium text-lg">
                                       {param.sets}
                                     </span>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-600">Reps:</span>{' '}
-                                    <span className="font-medium">
+                                  <div className="p-2">
+                                    <span className="text-gray-600 block mb-1">
+                                      Reps:
+                                    </span>
+                                    <span className="font-medium text-lg">
                                       {param.reps}
                                     </span>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-600">Rest:</span>{' '}
-                                    <span className="font-medium">
+                                  <div className="p-2">
+                                    <span className="text-gray-600 block mb-1">
+                                      Rest:
+                                    </span>
+                                    <span className="font-medium text-lg">
                                       {param.rest_seconds}s
                                     </span>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-600">
+                                  <div className="p-2">
+                                    <span className="text-gray-600 block mb-1">
                                       Tempo:
-                                    </span>{' '}
-                                    <span className="font-medium">
+                                    </span>
+                                    <span className="font-medium text-lg">
                                       {param.tempo}
                                     </span>
                                   </div>
                                   {param.notes && (
-                                    <div className="col-span-2 md:col-span-4">
-                                      <span className="text-gray-600">
+                                    <div className="col-span-2 md:col-span-3 lg:col-span-4 p-2">
+                                      <span className="text-gray-600 block mb-1">
                                         Notes:
-                                      </span>{' '}
+                                      </span>
                                       <span className="font-medium">
                                         {param.notes}
                                       </span>
@@ -1401,7 +1835,7 @@ const AdminUsers = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 ">
               {filteredAndSortedUsers.map((user) => (
                 <tr
                   key={user.id}
